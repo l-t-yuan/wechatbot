@@ -19,6 +19,7 @@ func Run() {
 
 	// 创建热存储容器对象
 	reloadStorage := openwechat.NewJsonFileHotReloadStorage("storage.json")
+
 	// 执行热登录
 	err := bot.HotLogin(reloadStorage)
 	if err != nil {
@@ -30,3 +31,4 @@ func Run() {
 	// 阻塞主goroutine, 直到发生异常或者用户主动退出
 	bot.Block()
 }
+
