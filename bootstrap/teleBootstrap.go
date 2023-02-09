@@ -12,7 +12,7 @@ func RunTele() {
 	// log.Printf("tele token: %s \n", config.LoadConfig().TeleToken)
 	bot := tbot.New(config.LoadConfig().TeleToken)
 	c := bot.Client()
-
+	log.Printf("tele start: %s \n", "try")
 	bot.HandleMessage(".*", func(m *tbot.Message) {
 		// c.SendChatAction(m.Chat.ID, tbot.ActionTyping)
 		// time.Sleep(1 * time.Second)

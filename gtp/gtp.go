@@ -179,6 +179,7 @@ func CompletionsMore(msg string, unitKey string) (string, error) {
 	log.Printf("gpt response text: %s \n", reply)
 	if (reply != "") {
 		*gptc = append(*gptc, msg)
+		*gptc = append(*gptc, reply)
 	} else {
 		log.Printf("gpt response error: %#v \n", gptResponseBody)
 		return "", errors.New("未知错误")
