@@ -15,6 +15,8 @@ type Configuration struct {
 	JwtToken string `json:"jwt_token"`
 	// 自动通过好友
 	AutoPass bool `json:"auto_pass"`
+
+	TeleToken string `json:"tele_token"`
 }
 
 var config *Configuration

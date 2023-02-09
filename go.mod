@@ -11,5 +11,6 @@ require (
 	github.com/mattn/go-isatty v0.0.17 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/ugorji/go/codec v1.2.9 // indirect
+	github.com/yanzay/tbot/v2 v2.2.0 // indirect
 	golang.org/x/crypto v0.6.0 // indirect
 )

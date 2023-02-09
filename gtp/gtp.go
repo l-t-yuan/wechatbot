@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"errors"
 )
 
 const BASEURL = "https://api.openai.com/v1/"
@@ -180,6 +181,7 @@ func CompletionsMore(msg string, unitKey string) (string, error) {
 		*gptc = append(*gptc, msg)
 	} else {
 		log.Printf("gpt response error: %#v \n", gptResponseBody)
+		return "", errors.New("未知错误")
 	}
 	return reply, nil
 }
