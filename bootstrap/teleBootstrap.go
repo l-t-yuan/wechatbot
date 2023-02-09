@@ -3,7 +3,6 @@ package bootstrap
 import (
 	"github.com/869413421/wechatbot/handlers"
 	"github.com/869413421/wechatbot/config"
-	"time"
 	"log"
 
 	"github.com/yanzay/tbot/v2"
