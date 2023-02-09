@@ -114,9 +114,21 @@ func Completions(msg string) (string, error) {
 func CompletionsMore(msg string, unitKey string) (string, error) {
 	gptc := getGptChannel(unitKey)
 	doPrompt := strings.Join(*gptc, "\n ")
+	if doPrompt != "" {
+		doPrompt = doPrompt + "\n" + msg + "\n"
+	} else {
+		doPrompt = msg + "\n"
+	}
+
+	if msg == "清理" {
+		*gptc = []string{}
+		return "数据已清理", nil
+	}
+
+
 	requestBody := ChatGPTRequestBody{
 		Model:            "text-davinci-003",
-		Prompt:           doPrompt + msg,
+		Prompt:           doPrompt,
 		MaxTokens:        2048,
 		Temperature:      0.7,
 		TopP:             1,
