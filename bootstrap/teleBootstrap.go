@@ -16,7 +16,7 @@ func RunTele() {
 
 	bot.HandleMessage("*", func(m *tbot.Message) {
 		// c.SendChatAction(m.Chat.ID, tbot.ActionTyping)
-		// time.Sleep(1 * time.Second)
+		time.Sleep(1 * time.Second)
 		// c.SendMessage(m.Chat.ID, "hello!")
 			log.Printf("tele response text: %#v \n", m)
 		// c.SendMessage(m.Chat.ID, hadler.TeleHandler("", m.Chat.ID.String()))
