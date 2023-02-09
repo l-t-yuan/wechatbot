@@ -1,7 +1,7 @@
 package bootstrap
 
 import (
-	// "github.com/869413421/wechatbot/handlers"
+	"github.com/869413421/wechatbot/handlers"
 	"github.com/869413421/wechatbot/config"
 	"time"
 	"log"
@@ -16,11 +16,11 @@ func RunTele() {
 
 	bot.HandleMessage(".*", func(m *tbot.Message) {
 		// c.SendChatAction(m.Chat.ID, tbot.ActionTyping)
-		time.Sleep(1 * time.Second)
+		// time.Sleep(1 * time.Second)
 		// c.SendMessage(m.Chat.ID, "hello!")
-			log.Printf("tele response text: %#v \n", m)
-		// c.SendMessage(m.Chat.ID, hadler.TeleHandler("", m.Chat.ID.String()))
-		c.SendMessage(m.Chat.ID, "ok")
+		log.Printf("tele send text: %#v \n", m.Text)
+		c.SendMessage(m.Chat.ID, handlers.TeleHandler(m.Text, m.Chat.ID))
+		// c.SendMessage(m.Chat.ID, "ok")
 	})
 	err := bot.Start()
 	if err != nil {
