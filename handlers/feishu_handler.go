@@ -29,13 +29,13 @@ func (f *FeishuHandler) Init() {
 }
 
 func (f *FeishuHandler) GenValidateHandler(c *gin.Context) {
-	rJson := &FeishuValidate{}
-	c.BindJSON(rJson)
 	body, _ := ioutil.ReadAll(c.Request.Body)
 	if body != nil {
 		fmt.Printf("请求body内容为:%s", body)
 	}
 	c.Request.Body = ioutil.NopCloser(bytes.NewBuffer(body))
+	rJson := &FeishuValidate{}
+	c.BindJSON(rJson)
 	if rJson.Type == "url_verification" {
 		fmt.Printf("%+v", rJson)
 		if rJson.Token == config.LoadConfig().FeiToken {
