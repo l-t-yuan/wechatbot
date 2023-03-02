@@ -54,7 +54,7 @@ func (c *ChatGptBot) Chat(msg, unitKey string) (string, error) {
 	response, err := c.client.Chat(ctx, request)
 	fmt.Println(response, err)
 	if err != nil {
-		return "", err
+		return "机器人出错了", err
 	}
 	reply := response.Choices[0].Message.Content
 	*chat = append(*chat, openaigo.ChatMessage{Role: "user", Content: msg})

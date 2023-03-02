@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"sync"
+	"time"
 
 	"github.com/869413421/wechatbot/config"
 	"github.com/869413421/wechatbot/gtp"
@@ -22,6 +24,7 @@ import (
 type FeishuHandler struct {
 	baseHandler func(c *gin.Context)
 	cli         *lark.Client
+	eventIdList sync.Map
 }
 type FeishuValidate struct {
 	Challenge string `json:"challenge"`
@@ -37,7 +40,12 @@ func (f *FeishuHandler) Init() {
 	f.baseHandler = sdkginext.NewEventHandlerFunc(f.GenFeiHandler())
 	f.cli = lark.NewClient(config.LoadConfig().FeiAppId, config.LoadConfig().FeiAppSecret, lark.WithLogReqAtDebug(true), lark.WithLogLevel(larkcore.LogLevelDebug))
 }
-
+func (f *FeishuHandler) SetCache(key string, value bool, exp time.Duration) {
+	f.eventIdList.Store(key, value)
+	time.AfterFunc(exp, func() {
+		f.eventIdList.Delete(key)
+	})
+}
 func (f *FeishuHandler) GenValidateHandler(c *gin.Context) {
 	body, _ := ioutil.ReadAll(c.Request.Body)
 	if body != nil {
@@ -76,44 +84,52 @@ func (f *FeishuHandler) GenFeiHandler() *dispatcher.EventDispatcher {
 }
 
 func (f *FeishuHandler) onP2MessageReceiveV1(ctx context.Context, event *larkim.P2MessageReceiveV1) error {
-	fmt.Println(larkcore.Prettify(event))
-	fmt.Println(event.RequestId())
-
-	tenantKey := event.TenantKey()
-	openId := *event.Event.Sender.SenderId.OpenId
-	receiveMessageBody := &FMessageText{}
-	if err := json.Unmarshal([]byte(*event.Event.Message.Content), &receiveMessageBody); err != nil {
-		fmt.Println("================json str 转struct==")
-		fmt.Println(*event.Event.Message.Content)
+	// fmt.Println(larkcore.Prettify(event))
+	// fmt.Println(event.RequestId())
+	if _, ok := f.eventIdList.Load(*event.Event.Message.MessageId); ok {
+		return nil
 	}
 
-	client := gtp.GetChatGptBot()
-	reply, err := client.Chat(receiveMessageBody.Text, "feishu_"+openId)
-	if err != nil {
-		fmt.Println("chat error")
-		reply = "机器人出错了"
-	}
+	go func() {
+		tenantKey := event.TenantKey()
+		openId := *event.Event.Sender.SenderId.OpenId
+		receiveMessageBody := &FMessageText{}
+		if err := json.Unmarshal([]byte(*event.Event.Message.Content), &receiveMessageBody); err != nil {
+			fmt.Println("================json str 转struct==")
+			fmt.Println(*event.Event.Message.Content)
+		}
 
-	replayStruct := &FMessageText{
-		Text: reply,
-	}
-	replayStructString, err := json.Marshal(replayStruct)
-	if err != nil {
-		fmt.Printf("\n replayStructString error %#v\n", replayStruct) //{"cost":123.33,"name":"天马星空"}
-	}
-	fmt.Printf("\n replayStructString %s\n", string(replayStructString))
-	// ISV 给指定租户发送消息
-	resp, err := f.cli.Im.Message.Create(context.Background(), larkim.NewCreateMessageReqBuilder().
-		ReceiveIdType(larkim.ReceiveIdTypeOpenId).
-		Body(larkim.NewCreateMessageReqBodyBuilder().
-			MsgType(larkim.MsgTypeText).
-			ReceiveId(openId).
-			Content(string(replayStructString)).
-			Build()).
-		Build(), larkcore.WithTenantKey(tenantKey))
+		client := gtp.GetChatGptBot()
+		reply, err := client.Chat(receiveMessageBody.Text, "feishu_"+openId)
+		if err != nil {
+			return
+			// reply = "机器人出错了"
+		}
 
-	// 发送结果处理，resp,err
-	fmt.Println(resp, err)
+		replayStruct := &FMessageText{
+			Text: reply,
+		}
+		replayStructString, err := json.Marshal(replayStruct)
+		if err != nil {
+			fmt.Printf("\n replayStructString error %#v\n", replayStruct) //{"cost":123.33,"name":"天马星空"}
+		}
+		fmt.Printf("\n replayStructString %s\n", string(replayStructString))
+		// ISV 给指定租户发送消息
+		_, err = f.cli.Im.Message.Create(context.Background(), larkim.NewCreateMessageReqBuilder().
+			ReceiveIdType(larkim.ReceiveIdTypeOpenId).
+			Body(larkim.NewCreateMessageReqBodyBuilder().
+				MsgType(larkim.MsgTypeText).
+				ReceiveId(openId).
+				Content(string(replayStructString)).
+				Build()).
+			Build(), larkcore.WithTenantKey(tenantKey))
+
+		// 发送结果处理，resp,err
+		// fmt.Println(resp, err)
+		if err == nil {
+			f.SetCache(*event.Event.Message.MessageId, true, time.Second*60)
+		}
+	}()
 
 	return nil
 }
