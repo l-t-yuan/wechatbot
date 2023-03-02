@@ -93,13 +93,22 @@ func (f *FeishuHandler) onP2MessageReceiveV1(ctx context.Context, event *larkim.
 		fmt.Println("chat error")
 		reply = "机器人出错了"
 	}
+
+	replayStruct := &FMessageText{
+		Text: reply,
+	}
+	replayStructString, err := json.Marshal(replayStruct)
+	if err != nil {
+		fmt.Printf("%s\n", replayStructString) //{"cost":123.33,"name":"天马星空"}
+	}
+
 	// ISV 给指定租户发送消息
 	resp, err := f.cli.Im.Message.Create(context.Background(), larkim.NewCreateMessageReqBuilder().
 		ReceiveIdType(larkim.ReceiveIdTypeOpenId).
 		Body(larkim.NewCreateMessageReqBodyBuilder().
 			MsgType(larkim.MsgTypePost).
 			ReceiveId(openId).
-			Content(reply).
+			Content(string(replayStructString)).
 			Build()).
 		Build(), larkcore.WithTenantKey(tenantKey))
 
