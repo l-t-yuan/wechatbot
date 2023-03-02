@@ -21,8 +21,9 @@ type FeishuValidate struct {
 }
 
 func (f *FeishuHandler) GenValidateHandler(c *gin.Context) {
-	rJson := FeishuValidate{}
-	c.BindJSON(&rJson)
+	rJson := &FeishuValidate{}
+	c.BindJSON(rJson)
+	fmt.Printf("%+v", rJson)
 	if rJson.Token == config.LoadConfig().FeiToken {
 		c.JSON(http.StatusOK, gin.H{
 			"challenge": rJson.Challenge,
