@@ -9,6 +9,7 @@ import (
 
 	"github.com/869413421/wechatbot/config"
 	"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin/binding"
 	sdkginext "github.com/larksuite/oapi-sdk-gin"
 	larkcore "github.com/larksuite/oapi-sdk-go/v3/core"
 	"github.com/larksuite/oapi-sdk-go/v3/event/dispatcher"
@@ -35,7 +36,7 @@ func (f *FeishuHandler) GenValidateHandler(c *gin.Context) {
 	}
 	c.Request.Body = ioutil.NopCloser(bytes.NewBuffer(body))
 	rJson := &FeishuValidate{}
-	c.BindJSON(rJson)
+	c.ShouldBindBodyWith(rJson, binding.JSON)
 	if rJson.Type == "url_verification" {
 		fmt.Printf("%+v", rJson)
 		if rJson.Token == config.LoadConfig().FeiToken {
@@ -48,6 +49,7 @@ func (f *FeishuHandler) GenValidateHandler(c *gin.Context) {
 			})
 		}
 	} else {
+		c.Request.Body = ioutil.NopCloser(bytes.NewBuffer(body))
 		f.baseHandler(c)
 	}
 }
