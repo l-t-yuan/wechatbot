@@ -86,9 +86,11 @@ func (f *FeishuHandler) GenFeiHandler() *dispatcher.EventDispatcher {
 func (f *FeishuHandler) onP2MessageReceiveV1(ctx context.Context, event *larkim.P2MessageReceiveV1) error {
 	// fmt.Println(larkcore.Prettify(event))
 	// fmt.Println(event.RequestId())
-	if _, ok := f.eventIdList.Load(*event.Event.Message.MessageId); ok {
+	cacheKey := *event.Event.Message.MessageId
+	if _, ok := f.eventIdList.Load(cacheKey); ok {
 		return nil
 	}
+	fmt.Println(cacheKey)
 
 	go func() {
 		tenantKey := event.TenantKey()
@@ -127,7 +129,7 @@ func (f *FeishuHandler) onP2MessageReceiveV1(ctx context.Context, event *larkim.
 		// 发送结果处理，resp,err
 		// fmt.Println(resp, err)
 		if err == nil {
-			f.SetCache(*event.Event.Message.MessageId, true, time.Second*60)
+			f.SetCache(cacheKey, true, time.Second*60)
 		}
 	}()
 
