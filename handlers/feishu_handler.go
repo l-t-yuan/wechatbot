@@ -106,7 +106,7 @@ func (f *FeishuHandler) onP2MessageReceiveV1(ctx context.Context, event *larkim.
 	resp, err := f.cli.Im.Message.Create(context.Background(), larkim.NewCreateMessageReqBuilder().
 		ReceiveIdType(larkim.ReceiveIdTypeOpenId).
 		Body(larkim.NewCreateMessageReqBodyBuilder().
-			MsgType(larkim.MsgTypePost).
+			MsgType(larkim.MsgTypeText).
 			ReceiveId(openId).
 			Content(string(replayStructString)).
 			Build()).
