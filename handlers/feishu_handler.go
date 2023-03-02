@@ -92,6 +92,20 @@ func (f *FeishuHandler) onP2MessageReceiveV1(ctx context.Context, event *larkim.
 	}
 	fmt.Println(cacheKey)
 
+	go f.responseChat(ctx, event)
+
+	return nil
+}
+
+func (f *FeishuHandler) responseChat(ctx context.Context, event *larkim.P2MessageReceiveV1) error {
+	// fmt.Println(larkcore.Prettify(event))
+	// fmt.Println(event.RequestId())
+	cacheKey := *event.Event.Message.MessageId
+	if _, ok := f.eventIdList.Load(cacheKey); ok {
+		return nil
+	}
+	fmt.Println(cacheKey)
+
 	go func() {
 		tenantKey := event.TenantKey()
 		openId := *event.Event.Sender.SenderId.OpenId
