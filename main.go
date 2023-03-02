@@ -6,6 +6,6 @@ import (
 
 func main() {
 	// bootstrap.Run()
-	// bootstrap.RunWeb()
-	bootstrap.RunTele()
+	bootstrap.RunWeb()
+	// bootstrap.RunTele()
 }

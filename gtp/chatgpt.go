@@ -1,34 +1,64 @@
 package gtp
 
 import (
-	chatGptPkg "github.com/golang-infrastructure/go-ChatGPT"
+	"context"
+	"fmt"
+
 	"github.com/869413421/wechatbot/config"
-	"strings"
+	"github.com/otiai10/openaigo"
+
 	"log"
 )
 
-var ChatGptChannel = make(map[string]*chatGptPkg.ChatGPT)
+type ChatGptBot struct {
+	botChannels map[string]*[]openaigo.ChatMessage
+	client      *openaigo.Client
+}
 
-func getChannel(unitKey string) *chatGptPkg.ChatGPT {
-	chat, isOk := ChatGptChannel[unitKey]
+var chatGptBotIns *ChatGptBot
+
+func GetChatGptBot() *ChatGptBot {
+	if chatGptBotIns == nil {
+		chatGptBotIns = &ChatGptBot{}
+		chatGptBotIns.init()
+	}
+	return chatGptBotIns
+}
+
+func (c *ChatGptBot) init() {
+	c.client = openaigo.NewClient(config.LoadConfig().ApiKey)
+	c.botChannels = make(map[string]*[]openaigo.ChatMessage)
+}
+
+func (c *ChatGptBot) getChannel(unitKey string) *[]openaigo.ChatMessage {
+	chat, isOk := c.botChannels[unitKey]
 	if !isOk {
-		jwt := config.LoadConfig().JwtToken
-		chat = chatGptPkg.NewChatGPT(jwt)
-		ChatGptChannel[unitKey] = chat
+		chat = &[]openaigo.ChatMessage{}
+		c.botChannels[unitKey] = chat
 	}
 	return chat
 }
 
-func ChatGptCompletions(msg, unitKey string) (string, error) {
+func (c *ChatGptBot) Chat(msg, unitKey string) (string, error) {
 
-	chat := getChannel(unitKey)
+	chat := c.getChannel(unitKey)
+	tryChat := *chat
 
-	talk, err := chat.Talk(msg)
+	tryChat = append(tryChat, openaigo.ChatMessage{Role: "user", Content: msg})
 
+	request := openaigo.ChatCompletionRequestBody{
+		Model:    "gpt-3.5-turbo",
+		Messages: tryChat,
+	}
+	ctx := context.Background()
+	response, err := c.client.Chat(ctx, request)
+	fmt.Println(response, err)
 	if err != nil {
 		return "", err
 	}
-	reply := strings.Join(talk.Message.Content.Parts, ",")
+	reply := response.Choices[0].Message.Content
+	*chat = append(*chat, openaigo.ChatMessage{Role: "user", Content: msg})
+	*chat = append(*chat, openaigo.ChatMessage{Role: "assistant", Content: reply})
 	log.Printf("gpt response text: %s \n", reply)
 	return reply, nil
 }

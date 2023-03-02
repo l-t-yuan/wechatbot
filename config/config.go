@@ -11,12 +11,18 @@ import (
 type Configuration struct {
 	// gtp apikey
 	ApiKey string `json:"api_key"`
-	
+
 	JwtToken string `json:"jwt_token"`
 	// 自动通过好友
 	AutoPass bool `json:"auto_pass"`
 
 	TeleToken string `json:"tele_token"`
+
+	FeiAppId string `json:"feishu_appid"`
+
+	FeiAppSecret string `json:"feishu_secret"`
+	FeiEncrpy    string `json:"feishu_encrpy"`
+	FeiToken     string `json:"feishu_token"`
 }
 
 var config *Configuration
