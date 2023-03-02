@@ -1,8 +1,10 @@
 package handlers
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 
 	"github.com/869413421/wechatbot/config"
@@ -29,6 +31,11 @@ func (f *FeishuHandler) Init() {
 func (f *FeishuHandler) GenValidateHandler(c *gin.Context) {
 	rJson := &FeishuValidate{}
 	c.BindJSON(rJson)
+	body, _ := ioutil.ReadAll(c.Request.Body)
+	if body != nil {
+		fmt.Printf("请求body内容为:%s", body)
+	}
+	c.Request.Body = ioutil.NopCloser(bytes.NewBuffer(body))
 	if rJson.Type == "url_verification" {
 		fmt.Printf("%+v", rJson)
 		if rJson.Token == config.LoadConfig().FeiToken {
