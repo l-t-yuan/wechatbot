@@ -99,9 +99,9 @@ func (f *FeishuHandler) onP2MessageReceiveV1(ctx context.Context, event *larkim.
 	}
 	replayStructString, err := json.Marshal(replayStruct)
 	if err != nil {
-		fmt.Printf("%s\n", replayStructString) //{"cost":123.33,"name":"天马星空"}
+		fmt.Printf("\n replayStructString error %#v\n", replayStruct) //{"cost":123.33,"name":"天马星空"}
 	}
-
+	fmt.Printf("\n replayStructString %s\n", replayStructString)
 	// ISV 给指定租户发送消息
 	resp, err := f.cli.Im.Message.Create(context.Background(), larkim.NewCreateMessageReqBuilder().
 		ReceiveIdType(larkim.ReceiveIdTypeOpenId).
