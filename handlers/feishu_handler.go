@@ -3,14 +3,35 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"net/http"
 
 	"github.com/869413421/wechatbot/config"
+	"github.com/gin-gonic/gin"
 	larkcore "github.com/larksuite/oapi-sdk-go/v3/core"
 	"github.com/larksuite/oapi-sdk-go/v3/event/dispatcher"
 	larkim "github.com/larksuite/oapi-sdk-go/v3/service/im/v1"
 )
 
 type FeishuHandler struct {
+}
+type FeishuValidate struct {
+	Challenge string `json:"challenge"`
+	Token     string `json:"token"`
+	Type      string `json:"type"`
+}
+
+func (f *FeishuHandler) GenValidateHandler(c *gin.Context) {
+	rJson := FeishuValidate{}
+	c.BindJSON(&rJson)
+	if rJson.Token == config.LoadConfig().FeiToken {
+		c.JSON(http.StatusOK, gin.H{
+			"challenge": rJson.Challenge,
+		})
+	} else {
+		c.JSON(http.StatusOK, gin.H{
+			"challenge": "error",
+		})
+	}
 }
 
 func (f *FeishuHandler) GenFeiHandler() *dispatcher.EventDispatcher {
