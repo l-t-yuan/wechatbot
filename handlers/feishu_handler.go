@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -34,6 +35,10 @@ type FeishuValidate struct {
 
 type FMessageText struct {
 	Text string `json:"text"`
+}
+
+type FMessageImg struct {
+	ImageKey string `json:"image_key"`
 }
 
 func (f *FeishuHandler) Init() {
@@ -84,68 +89,131 @@ func (f *FeishuHandler) GenFeiHandler() *dispatcher.EventDispatcher {
 }
 
 func (f *FeishuHandler) onP2MessageReceiveV1(ctx context.Context, event *larkim.P2MessageReceiveV1) error {
-	// fmt.Println(larkcore.Prettify(event))
-	// fmt.Println(event.RequestId())
-	cacheKey := *event.Event.Message.MessageId
-	if _, ok := f.eventIdList.Load(cacheKey); ok {
-		return nil
-	}
-	fmt.Println(cacheKey)
-
-	go f.responseChat(ctx, event)
+	go f.sloveEvent(ctx, event)
 
 	return nil
 }
 
-func (f *FeishuHandler) responseChat(ctx context.Context, event *larkim.P2MessageReceiveV1) error {
-	// fmt.Println(larkcore.Prettify(event))
-	// fmt.Println(event.RequestId())
+func (f *FeishuHandler) sloveEvent(ctx context.Context, event *larkim.P2MessageReceiveV1) error {
 	cacheKey := *event.Event.Message.MessageId
 	if _, ok := f.eventIdList.Load(cacheKey); ok {
 		return nil
 	}
 	fmt.Println(cacheKey)
 
-	go func() {
-		tenantKey := event.TenantKey()
-		openId := *event.Event.Sender.SenderId.OpenId
-		receiveMessageBody := &FMessageText{}
-		if err := json.Unmarshal([]byte(*event.Event.Message.Content), &receiveMessageBody); err != nil {
-			fmt.Println("================json str 转struct==")
-			fmt.Println(*event.Event.Message.Content)
-		}
+	receiveMessageBody := &FMessageText{}
+	err := json.Unmarshal([]byte(*event.Event.Message.Content), &receiveMessageBody)
+	if err != nil {
+		fmt.Println("================json str 转struct==")
+		fmt.Println(*event.Event.Message.Content)
+		return nil
+	}
+	receiveMessageText := receiveMessageBody.Text
+	if strings.HasPrefix(receiveMessageText, "genImg") {
+		err = f.responseImage(ctx, receiveMessageText[len("genImg")+1:], event)
+	} else {
+		err = f.responseChat(ctx, receiveMessageText, event)
+	}
 
-		client := gtp.GetChatGptBot()
-		reply, err := client.Chat(receiveMessageBody.Text, "feishu_"+openId)
-		if err != nil {
-			return
-			// reply = "机器人出错了"
-		}
+	if err == nil {
+		f.SetCache(cacheKey, true, time.Second*60)
+	}
+	return nil
+}
 
-		replayStruct := &FMessageText{
-			Text: reply,
-		}
-		replayStructString, err := json.Marshal(replayStruct)
-		if err != nil {
-			fmt.Printf("\n replayStructString error %#v\n", replayStruct) //{"cost":123.33,"name":"天马星空"}
-		}
-		fmt.Printf("\n replayStructString %s\n", string(replayStructString))
-		// ISV 给指定租户发送消息
-		_, err = f.cli.Im.Message.Create(context.Background(), larkim.NewCreateMessageReqBuilder().
-			ReceiveIdType(larkim.ReceiveIdTypeOpenId).
-			Body(larkim.NewCreateMessageReqBodyBuilder().
-				MsgType(larkim.MsgTypeText).
-				ReceiveId(openId).
-				Content(string(replayStructString)).
-				Build()).
-			Build(), larkcore.WithTenantKey(tenantKey))
+func (f *FeishuHandler) responseChat(ctx context.Context, msg string, event *larkim.P2MessageReceiveV1) error {
 
-		// 发送结果处理，resp,err
-		// fmt.Println(resp, err)
-		if err == nil {
-			f.SetCache(cacheKey, true, time.Second*60)
-		}
-	}()
+	tenantKey := event.TenantKey()
+	openId := *event.Event.Sender.SenderId.OpenId
+
+	client := gtp.GetChatGptBot()
+	reply, err := client.Chat(msg, "feishu_"+openId)
+	if err != nil {
+		return nil
+		// reply = "机器人出错了"
+	}
+
+	replayStruct := &FMessageText{
+		Text: reply,
+	}
+	replayStructString, err := json.Marshal(replayStruct)
+	if err != nil {
+		fmt.Printf("\n replayStructString error %#v\n", replayStruct) //{"cost":123.33,"name":"天马星空"}
+	}
+	fmt.Printf("\n replayStructString %s\n", string(replayStructString))
+	// ISV 给指定租户发送消息
+	_, err = f.cli.Im.Message.Create(context.Background(), larkim.NewCreateMessageReqBuilder().
+		ReceiveIdType(larkim.ReceiveIdTypeOpenId).
+		Body(larkim.NewCreateMessageReqBodyBuilder().
+			MsgType(larkim.MsgTypeText).
+			ReceiveId(openId).
+			Content(string(replayStructString)).
+			Build()).
+		Build(), larkcore.WithTenantKey(tenantKey))
+
+	// 发送结果处理，resp,err
+	// fmt.Println(resp, err)
+
+	return nil
+}
+
+func (f *FeishuHandler) responseImage(ctx context.Context, msg string, event *larkim.P2MessageReceiveV1) error {
+	fmt.Printf("\n responseImage prop %#v\n", msg)
+	tenantKey := event.TenantKey()
+	openId := *event.Event.Sender.SenderId.OpenId
+
+	client := gtp.GetChatGptBot()
+	reply, err := client.DrawImg(msg)
+	if err != nil {
+		return nil
+		// reply = "机器人出错了"
+	}
+
+	resp, err := http.Get(reply)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	req := larkim.NewCreateImageReqBuilder().
+		Body(larkim.NewCreateImageReqBodyBuilder().
+			ImageType("message").
+			Image(resp.Body).
+			Build()).
+		Build()
+	fresp, err := f.cli.Im.Image.Create(context.Background(), req)
+
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+
+	// 服务端错误处理
+	if !fresp.Success() {
+		fmt.Println(fresp.Code, fresp.Msg, fresp.RequestId())
+		return nil
+	}
+
+	replayStruct := &FMessageImg{
+		ImageKey: *fresp.Data.ImageKey,
+	}
+	replayStructString, err := json.Marshal(replayStruct)
+	if err != nil {
+		fmt.Printf("\n replayStructString error %#v\n", replayStruct)
+	}
+	fmt.Printf("\n replayStructString %s\n", string(replayStructString))
+	// ISV 给指定租户发送消息
+	_, err = f.cli.Im.Message.Create(context.Background(), larkim.NewCreateMessageReqBuilder().
+		ReceiveIdType(larkim.ReceiveIdTypeOpenId).
+		Body(larkim.NewCreateMessageReqBodyBuilder().
+			MsgType(larkim.MsgTypeImage).
+			ReceiveId(openId).
+			Content(string(replayStructString)).
+			Build()).
+		Build(), larkcore.WithTenantKey(tenantKey))
+
+	// 发送结果处理，resp,err
+	// fmt.Println(resp, err)
 
 	return nil
 }
