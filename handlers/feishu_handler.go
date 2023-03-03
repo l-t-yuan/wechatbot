@@ -117,15 +117,17 @@ func (f *FeishuHandler) sloveEvent(ctx context.Context, event *larkim.P2MessageR
 	} else if strings.HasPrefix(receiveMessageText, "/genImg") {
 		reply, err := client.DrawImg(receiveMessageText[len("/genImg")+1:])
 		if err != nil {
-			return nil
+			eventErr = f.responseChat(ctx, "图片生成异常, 请稍后重试", event)
+		} else {
+			eventErr = f.responseImage(ctx, reply, event)
 		}
-		eventErr = f.responseImage(ctx, reply, event)
 	} else {
 		reply, err := client.Chat(receiveMessageText, unitKey)
 		if err != nil {
-			return nil
+			eventErr = f.responseChat(ctx, "聊天出现异常, 请稍后重试", event)
+		} else {
+			eventErr = f.responseChat(ctx, reply, event)
 		}
-		eventErr = f.responseChat(ctx, reply, event)
 	}
 
 	if eventErr == nil {
