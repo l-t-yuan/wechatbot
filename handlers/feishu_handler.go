@@ -102,36 +102,42 @@ func (f *FeishuHandler) sloveEvent(ctx context.Context, event *larkim.P2MessageR
 	fmt.Println(cacheKey)
 
 	receiveMessageBody := &FMessageText{}
-	err := json.Unmarshal([]byte(*event.Event.Message.Content), &receiveMessageBody)
-	if err != nil {
+	eventErr := json.Unmarshal([]byte(*event.Event.Message.Content), &receiveMessageBody)
+	if eventErr != nil {
 		fmt.Println("================json str 转struct==")
 		fmt.Println(*event.Event.Message.Content)
 		return nil
 	}
 	receiveMessageText := receiveMessageBody.Text
-	if strings.HasPrefix(receiveMessageText, "genImg") {
-		err = f.responseImage(ctx, receiveMessageText[len("genImg")+1:], event)
+	unitKey := "feishu_" + *event.Event.Sender.SenderId.OpenId
+	client := gtp.GetChatGptBot()
+	if strings.HasPrefix(receiveMessageText, "/清理") {
+		client.CleanChat(unitKey)
+		eventErr = f.responseChat(ctx, "数据已清理", event)
+	} else if strings.HasPrefix(receiveMessageText, "/genImg") {
+		reply, err := client.DrawImg(receiveMessageText[len("/genImg")+1:])
+		if err != nil {
+			return nil
+		}
+		eventErr = f.responseImage(ctx, reply, event)
 	} else {
-		err = f.responseChat(ctx, receiveMessageText, event)
+		reply, err := client.Chat(receiveMessageText, unitKey)
+		if err != nil {
+			return nil
+		}
+		eventErr = f.responseChat(ctx, reply, event)
 	}
 
-	if err == nil {
+	if eventErr == nil {
 		f.SetCache(cacheKey, true, time.Second*60)
 	}
 	return nil
 }
 
-func (f *FeishuHandler) responseChat(ctx context.Context, msg string, event *larkim.P2MessageReceiveV1) error {
+func (f *FeishuHandler) responseChat(ctx context.Context, reply string, event *larkim.P2MessageReceiveV1) error {
 
 	tenantKey := event.TenantKey()
 	openId := *event.Event.Sender.SenderId.OpenId
-
-	client := gtp.GetChatGptBot()
-	reply, err := client.Chat(msg, "feishu_"+openId)
-	if err != nil {
-		return nil
-		// reply = "机器人出错了"
-	}
 
 	replayStruct := &FMessageText{
 		Text: reply,
@@ -154,22 +160,15 @@ func (f *FeishuHandler) responseChat(ctx context.Context, msg string, event *lar
 	// 发送结果处理，resp,err
 	// fmt.Println(resp, err)
 
-	return nil
+	return err
 }
 
-func (f *FeishuHandler) responseImage(ctx context.Context, msg string, event *larkim.P2MessageReceiveV1) error {
-	fmt.Printf("\n responseImage prop %#v\n", msg)
+func (f *FeishuHandler) responseImage(ctx context.Context, url string, event *larkim.P2MessageReceiveV1) error {
+	// fmt.Printf("\n responseImage prop %#v\n", msg)
 	tenantKey := event.TenantKey()
 	openId := *event.Event.Sender.SenderId.OpenId
 
-	client := gtp.GetChatGptBot()
-	reply, err := client.DrawImg(msg)
-	if err != nil {
-		return nil
-		// reply = "机器人出错了"
-	}
-
-	resp, err := http.Get(reply)
+	resp, err := http.Get(url)
 	if err != nil {
 		return err
 	}
@@ -215,7 +214,7 @@ func (f *FeishuHandler) responseImage(ctx context.Context, msg string, event *la
 	// 发送结果处理，resp,err
 	// fmt.Println(resp, err)
 
-	return nil
+	return err
 }
 
 func (f *FeishuHandler) onP2MessageReadV1(ctx context.Context, event *larkim.P2MessageReadV1) error {

@@ -63,6 +63,11 @@ func (c *ChatGptBot) Chat(msg, unitKey string) (string, error) {
 	return reply, nil
 }
 
+func (c *ChatGptBot) CleanChat(unitKey string) {
+	chat := c.getChannel(unitKey)
+	*chat = []openaigo.ChatMessage{}
+}
+
 func (c *ChatGptBot) DrawImg(msg string) (string, error) {
 	request := openaigo.ImageGenerationRequestBody{
 		Prompt: msg,
@@ -71,7 +76,7 @@ func (c *ChatGptBot) DrawImg(msg string) (string, error) {
 	}
 	ctx := context.Background()
 	response, err := c.client.CreateImage(ctx, request)
-	fmt.Println(response, err)
+	// fmt.Println(response, err)
 	if err != nil {
 		return "机器人出错了", err
 	}
