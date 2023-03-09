@@ -7,6 +7,13 @@ import (
 	"sync"
 )
 
+type FeishuConfig struct {
+	AppId  string `json:"appId"`
+	Token  string `json:"token"`
+	Secret string `json:"secret"`
+	Encrpy string `json:"encrpy"`
+}
+
 // Configuration 项目配置
 type Configuration struct {
 	// gtp apikey
@@ -16,13 +23,8 @@ type Configuration struct {
 	// 自动通过好友
 	AutoPass bool `json:"auto_pass"`
 
-	TeleToken string `json:"tele_token"`
-
-	FeiAppId string `json:"feishu_appid"`
-
-	FeiAppSecret string `json:"feishu_secret"`
-	FeiEncrpy    string `json:"feishu_encrpy"`
-	FeiToken     string `json:"feishu_token"`
+	TeleToken string         `json:"tele_token"`
+	FeiShu    []FeishuConfig `json:"feishu"`
 }
 
 var config *Configuration

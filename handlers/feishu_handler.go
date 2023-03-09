@@ -26,6 +26,7 @@ type FeishuHandler struct {
 	baseHandler func(c *gin.Context)
 	cli         *lark.Client
 	eventIdList sync.Map
+	config      *config.FeishuConfig
 }
 type FeishuValidate struct {
 	Challenge string `json:"challenge"`
@@ -41,9 +42,32 @@ type FMessageImg struct {
 	ImageKey string `json:"image_key"`
 }
 
-func (f *FeishuHandler) Init() {
-	f.baseHandler = sdkginext.NewEventHandlerFunc(f.GenFeiHandler())
-	f.cli = lark.NewClient(config.LoadConfig().FeiAppId, config.LoadConfig().FeiAppSecret, lark.WithLogReqAtDebug(true), lark.WithLogLevel(larkcore.LogLevelDebug))
+var FeiHandlerMap = make(map[string]*FeishuHandler)
+
+func GetFeishuHandler(AppId string) *FeishuHandler {
+	if v, ok := FeiHandlerMap[AppId]; ok {
+		return v
+	} else {
+		FeiHandlerMap[AppId] = (&FeishuHandler{}).Init(AppId)
+		return FeiHandlerMap[AppId]
+	}
+}
+
+func (f *FeishuHandler) Init(AppId string) *FeishuHandler {
+	for _, v := range config.LoadConfig().FeiShu {
+		if v.AppId == AppId {
+			f.config = &v
+			break
+		}
+	}
+
+	if f.config == nil {
+		return nil
+	}
+
+	f.baseHandler = sdkginext.NewEventHandlerFunc(f.GenFeiHandler(f.config))
+	f.cli = lark.NewClient(f.config.AppId, f.config.Secret, lark.WithLogReqAtDebug(true), lark.WithLogLevel(larkcore.LogLevelDebug))
+	return f
 }
 func (f *FeishuHandler) SetCache(key string, value bool, exp time.Duration) {
 	f.eventIdList.Store(key, value)
@@ -61,7 +85,7 @@ func (f *FeishuHandler) GenValidateHandler(c *gin.Context) {
 	c.ShouldBindBodyWith(rJson, binding.JSON)
 	if rJson.Type == "url_verification" {
 		fmt.Printf("%+v", rJson)
-		if rJson.Token == config.LoadConfig().FeiToken {
+		if rJson.Token == f.config.Token {
 			c.JSON(http.StatusOK, gin.H{
 				"challenge": rJson.Challenge,
 			})
@@ -76,8 +100,8 @@ func (f *FeishuHandler) GenValidateHandler(c *gin.Context) {
 	}
 }
 
-func (f *FeishuHandler) GenFeiHandler() *dispatcher.EventDispatcher {
-	handler := dispatcher.NewEventDispatcher(config.LoadConfig().FeiToken, config.LoadConfig().FeiEncrpy).
+func (f *FeishuHandler) GenFeiHandler(fconfig *config.FeishuConfig) *dispatcher.EventDispatcher {
+	handler := dispatcher.NewEventDispatcher(fconfig.Token, fconfig.Encrpy).
 		OnP2MessageReceiveV1(f.onP2MessageReceiveV1).
 		OnP2MessageReadV1(f.onP2MessageReadV1)
 		// OnP2UserCreatedV3(func(ctx context.Context, event *larkcontact.P2UserCreatedV3) error {
