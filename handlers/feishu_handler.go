@@ -149,6 +149,7 @@ func (f *FeishuHandler) sloveEvent(ctx context.Context, event *larkim.P2MessageR
 		reply, err := client.Chat(receiveMessageText, unitKey)
 		if err != nil {
 			eventErr = f.responseChat(ctx, "聊天出现异常, 请稍后重试", event)
+			client.CleanChat(unitKey)
 		} else {
 			eventErr = f.responseChat(ctx, reply, event)
 		}
